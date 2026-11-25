@@ -1,0 +1,8 @@
+import mongoose from 'mongoose';
+const {Schema,model}=mongoose;
+const userSchema=new Schema({name:{type:String,required:true},email:{type:String,required:true,unique:true,lowercase:true},password:{type:String,required:true}},{timestamps:true});
+const leadSchema=new Schema({userId:{type:Schema.Types.ObjectId,ref:'User',index:true},name:String,email:String,phone:String,company:String,industry:String,budget:String,requirements:String,timeline:String,score:{type:Number,default:0},category:{type:String,default:'Cold'},sentiment:{type:String,default:'Neutral'},status:{type:String,default:'New'}},{timestamps:true});
+const conversationSchema=new Schema({userId:{type:Schema.Types.ObjectId,ref:'User',index:true},leadId:{type:Schema.Types.ObjectId,ref:'Lead'},language:{type:String,default:'en-IN'},messages:[{role:String,content:String,at:{type:Date,default:Date.now}}],summary:String,sentiment:String,leadScore:Number,leadCategory:String},{timestamps:true});
+const appointmentSchema=new Schema({userId:{type:Schema.Types.ObjectId,ref:'User',index:true},leadId:{type:Schema.Types.ObjectId,ref:'Lead'},customerName:String,email:String,date:String,time:String,purpose:String,status:{type:String,default:'Upcoming'}},{timestamps:true});
+const knowledgeSchema=new Schema({userId:{type:Schema.Types.ObjectId,ref:'User',index:true},title:String,content:String,chunks:[String]},{timestamps:true});
+export const User=model('User',userSchema); export const Lead=model('Lead',leadSchema); export const Conversation=model('Conversation',conversationSchema); export const Appointment=model('Appointment',appointmentSchema); export const KnowledgeDocument=model('KnowledgeDocument',knowledgeSchema);
