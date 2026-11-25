@@ -342,3 +342,25 @@ html.dark .orb-ring {
 html.dark .ring-b {
   border-color: #1b392b;
 }
+
+
+/* Enhanced Dashboard Layout Styles */
+.metric-grid.five-cols {
+  grid-template-columns: repeat(5, 1fr);
+}
+.dashboard-grid.three-cols {
+  grid-template-columns: repeat(3, 1fr);
+}
+@media(max-width: 1200px) {
+  .metric-grid.five-cols {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .dashboard-grid.three-cols {
+    grid-template-columns: 1fr;
+  }
+}
+@media(max-width: 768px) {
+  .metric-grid.five-cols {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
