@@ -6,9 +6,9 @@ function scoreLead(data = {}) {
   const text = JSON.stringify(data).toLowerCase();
   let score = 0;
   if (/budget|₹|rs\.?|\$|inr|rupee|\d{3,}/i.test(text)) score += 20;
-  if (/buy|purchase|interested|need|looking|implement|start|demo|scale|डेमो|డెమో/i.test(text)) score += 25;
-  if (/immediately|this week|this month|urgent|soon|asap|now|तुरंत|వెంటనే/i.test(text)) score += 20;
-  if (/company|business|team|employee|requirement|startup|enterprise|कंपनी|కంపెనీ/i.test(text)) score += 15;
+  if (/buy|purchase|interested|need|looking|implement|start|demo|scale|डेमो|డెమో|ಡೆಮೋ/i.test(text)) score += 25;
+  if (/immediately|this week|this month|urgent|soon|asap|now|तुरंत|వెంటనే|ತಕ್ಷಣ/i.test(text)) score += 20;
+  if (/company|business|team|employee|requirement|startup|enterprise|कंपनी|కంపెనీ|ಕಂಪನಿ/i.test(text)) score += 15;
   if (text.length > 120) score += 10;
   if (/@/.test(text)) score += 10;
   score = Math.min(100, score);
@@ -17,9 +17,32 @@ function scoreLead(data = {}) {
 
 function sentimentOf(text = '') {
   const s = text.toLowerCase();
-  if (/angry|frustrat|disappoint|bad|issue|problem|not happy|poor|slow|terrible|expensive|hate|खराब|समस्या|సమస్య/.test(s)) return 'Negative';
-  if (/great|good|thank|excellent|interested|love|awesome|perfect|helpful|impressive|yes|अच्छा|धन्यवाद|ధన్యవాదాలు|బాగుంది/.test(s)) return 'Positive';
+  if (/angry|frustrat|disappoint|bad|issue|problem|not happy|poor|slow|terrible|expensive|hate|खराब|समस्या|సమస్య|ಸಮಸ್ಯೆ/.test(s)) return 'Negative';
+  if (/great|good|thank|excellent|interested|love|awesome|perfect|helpful|impressive|yes|अच्छा|धन्यवाद|ధన్యవాదాలు|బాగుంది|ಧನ್ಯವಾದ|ಚೆನ್ನಾಗಿದೆ/.test(s)) return 'Positive';
   return 'Neutral';
+}
+
+function detectLanguage(message = '', fallbackLanguage = 'en-IN') {
+  const msg = message.trim();
+  if (!msg) return fallbackLanguage || 'en-IN';
+
+  // Explicit language request in prompt
+  if (/\b(in telugu|telugu lo|speak telugu|reply in telugu)\b/i.test(msg)) return 'te-IN';
+  if (/\b(in kannada|kannada dalli|speak kannada|reply in kannada)\b/i.test(msg)) return 'kn-IN';
+  if (/\b(in hindi|hindi mein|speak hindi|reply in hindi)\b/i.test(msg)) return 'hi-IN';
+  if (/\b(in english|speak english|reply in english)\b/i.test(msg)) return 'en-IN';
+
+  // Unicode script detection
+  if (/[\u0C00-\u0C7F]/.test(msg)) return 'te-IN';
+  if (/[\u0C80-\u0CFF]/.test(msg)) return 'kn-IN';
+  if (/[\u0900-\u097F]/.test(msg)) return 'hi-IN';
+
+  // Romanized Indian language keyword detection (when STT is in English mode)
+  if (/\b(namaskaram|ela unnaru|entha|kavali|cheppandi|meeru|nenu|dhara|telugu|vundha|cheppu|avunu|kadhu|matladu)\b/i.test(msg)) return 'te-IN';
+  if (/\b(namaskara|hegiddira|yeshtu|beku|heli|naanu|neevu|kannada|ideya|illa|howdu|mathadi)\b/i.test(msg)) return 'kn-IN';
+  if (/\b(namaste|kaise ho|kitna|chahiye|kya hai|batao|bataiye|mujhe|aap|hum|hindi|haan|nahi|theek|samjhao)\b/i.test(msg)) return 'hi-IN';
+
+  return fallbackLanguage || 'en-IN';
 }
 
 async function retrieveKnowledge(userId, query) {
@@ -62,6 +85,7 @@ function generateSmartFallbackReply({ history = [], message = '', language = 'en
   const lang = (language || 'en-IN').toLowerCase();
   const isHindi = lang.startsWith('hi');
   const isTelugu = lang.startsWith('te');
+  const isKannada = lang.startsWith('kn');
 
   // 1. If company knowledge document matched
   if (knowledge && knowledge.length > 0) {
@@ -73,49 +97,64 @@ function generateSmartFallbackReply({ history = [], message = '', language = 'en
     if (isTelugu) {
       return `మా సమాచారం ప్రకారం: ${snippet.trim()}. దీని గురించి మరింత వివరంగా తెలుసుకోవాలనుకుంటున్నారా?`;
     }
+    if (isKannada) {
+      return `ನಮ್ಮ ಮಾಹಿತಿಯ ಪ್ರಕಾರ: ${snippet.trim()}. ಇದರ ಬಗ್ಗೆ ಹೆಚ್ಚಿನ ವಿವರಗಳು ಬೇಕೇ?`;
+    }
     return `According to our company knowledge: ${snippet.trim()}. Would you like more details on pricing, features, or scheduling a demo?`;
   }
 
   // 2. Greeting intent
-  if (/^(hi|hello|hey|namaste|greetings|good morning|good afternoon|good evening|नमस्ते|प्रणाम|నమస్కారం|నమస్తే)\b/i.test(lowerMsg.trim())) {
+  if (/^(hi|hello|hey|namaste|namaskaram|namaskara|greetings|good morning|good afternoon|good evening|नमस्ते|प्रणाम|నమస్కారం|నమస్తే|ನಮಸ್ಕಾರ)\b/i.test(lowerMsg.trim())) {
     if (isHindi) {
       return 'नमस्ते! VOXLEAD AI में आपका स्वागत है। मैं आपकी व्यावसायिक ज़रूरतों को समझने और सही समाधान खोजने में मदद कर सकता हूँ। आप किस प्रकार का समाधान खोज रहे हैं?';
     }
     if (isTelugu) {
       return 'నమస్కారం! VOXLEAD AI కి స్వాగతం. మీ వ్యాపార అవసరాలకు సరైన పరిష్కారాన్ని అందించడానికి నేను సిద్ధంగా ఉన్నాను. మీరు ఎలాంటి పరిష్కారం కోసం చూస్తున్నారు?';
     }
+    if (isKannada) {
+      return 'ನಮಸ್ಕಾರ! VOXLEAD AI ಗೆ ಸ್ವಾಗತ. ನಿಮ್ಮ ವ್ಯಾಪಾರದ ಅಗತ್ಯಗಳಿಗೆ ಸೂಕ್ತವಾದ ಪರಿಹಾರವನ್ನು ಹುಡುಕಲು ನಾನು ಸಹಾಯ ಮಾಡುತ್ತೇನೆ. ನೀವು ಯಾವ ರೀತಿಯ ಪರಿಹಾರವನ್ನು ಹುಡುಕುತ್ತಿದ್ದೀರಿ?';
+    }
     return 'Hello! Welcome to VOXLEAD AI. I am here to understand your business requirements and find the perfect solution for you. What brings you to us today?';
   }
 
   // 3. Appointment / Demo booking intent
-  if (/appointment|schedule|meeting|demo|call me|book|talk to (someone|sales|human)|डेमो|मीटिंग|अपॉइंटमेंट|డెమో|మీటింగ్|అపాయింట్‌మెంట్/i.test(lowerMsg)) {
+  if (/appointment|schedule|meeting|demo|call me|book|talk to (someone|sales|human)|डेमो|मीटिंग|अपॉइंटमेंट|డెమో|మీటింగ్|అపాయింట్‌మెంట్|ಡೆಮೋ|ಮೀಟಿಂಗ್/i.test(lowerMsg)) {
     if (isHindi) {
       return 'ज़रूर! आप हमारी अपॉइंटमेंट्स स्क्रीन से सीधे हमारे सेल्स विशेषज्ञ के साथ एक डेमो या कॉल बुक कर सकते हैं। आप किस दिन और समय पर मीटिंग पसंद करेंगे?';
     }
     if (isTelugu) {
       return 'తప్పకుండా! మీరు మా అపాయింట్‌మెంట్స్ విభాగం ద్వారా నేరుగా మా సేల్స్ నిపుణుడితో సమావేశాన్ని షెడ్యూల్ చేయవచ్చు. మీకు ఏ సమయం అనుకూలంగా ఉంటుంది?';
     }
+    if (isKannada) {
+      return 'ಖಂಡಿತ! ನೀವು ನಮ್ಮ ಅಪಾಯಿಂಟ್‌ಮೆಂಟ್ಸ್ ವಿಭಾಗದಿಂದ ನೇರವಾಗಿ ಡೆಮೋ ಅಥವಾ ಕರೆಯನ್ನು ಬುಕ್ ಮಾಡಬಹುದು. ನಿಮಗೆ ಯಾವ ದಿನ ಮತ್ತು ಸಮಯ ಅನುಕೂಲಕರವಾಗಿದೆ?';
+    }
     return 'I would be delighted to set that up! You can book a convenient date and time in the Appointments tab, or let me know what day works best for your team.';
   }
 
   // 4. Pricing / Cost intent
-  if (/price|cost|pricing|rate|charges|plan|subscription|how much|fee|कीमत|दाम|खर्च|ధర|ఖర్చు/i.test(lowerMsg)) {
+  if (/price|cost|pricing|rate|charges|plan|subscription|how much|fee|कीमत|दाम|खर्च|ధర|ఖర్చు|entha|dhara|ಬೆಲೆ|ವೆಚ್ಚ|yeshtu/i.test(lowerMsg)) {
     if (isHindi) {
       return 'हमारी कीमतें आपकी टीम के आकार और मॉड्यूल की आवश्यकता के अनुसार अनुकूलित की जाती हैं। क्या आप बता सकते हैं कि आपकी टीम में कितने लोग हैं या आपका अनुमानित बजट क्या है?';
     }
     if (isTelugu) {
-      return 'మా ప్లాన్‌ల ధర మీ బృందం పరిమాణం మరియు అవసరమైన సేవల ఆధారంగా ఉంటుంది. మీ బృందంలో ఎంతమంది సభ్యులు ఉన్నారు లేదా మీ బడ్జెట్ ఎంత?';
+      return 'మా ప్లాన్‌ల ధర మీ బృందం పరిమాణం మరియు అవసరమైన సేవల ఆధారంగా ఉంటుంది. మా స్టార్టర్ ప్లాన్ నెలకు ₹15,000 నుండి ప్రారంభమవుతుంది. మీ బృందంలో ఎంతమంది సభ్యులు ఉన్నారు?';
     }
-    return 'Our pricing is customized to your team size and implementation scope, designed to provide high ROI. Could you share your estimated team size or monthly budget?';
+    if (isKannada) {
+      return 'ನಮ್ಮ ಯೋಜನೆಗಳ ಬೆಲೆ ನಿಮ್ಮ ತಂಡದ ಗಾತ್ರ ಮತ್ತು ಅಗತ್ಯಗಳನ್ನು ಅವಲಂಬಿಸಿರುತ್ತದೆ. ನಮ್ಮ ಸ್ಟಾರ್ಟರ್ ಪ್ಲಾನ್ ತಿಂಗಳಿಗೆ ₹15,000 ರಿಂದ ಪ್ರಾರಂಭವಾಗುತ್ತದೆ. ನಿಮ್ಮ ತಂಡದಲ್ಲಿ ಎಷ್ಟು ಜನರಿದ್ದಾರೆ?';
+    }
+    return 'Our pricing starts at ₹15,000 per month for the Starter Plan and scales to ₹75,000 for Enterprise. Could you share your estimated team size or monthly budget?';
   }
 
   // 5. Budget or timeline provided
-  if (customerData.budget || /immediately|this month|this week|urgent|soon|asap|month|budget|तुरंत|जल्दी|వెంటనే/i.test(lowerMsg)) {
+  if (customerData.budget || /immediately|this month|this week|urgent|soon|asap|month|budget|तुरंत|जल्दी|వెంటనే|ತಕ್ಷಣ/i.test(lowerMsg)) {
     if (isHindi) {
       return 'धन्यवाद, यह समयसीमा और बजट हमारे समाधान के लिए बिल्कुल अनुकूल है। क्या आप अपनी कंपनी का नाम या अपना ईमेल बता सकते हैं ताकि हम विस्तृत प्रपोजल भेज सकें?';
     }
     if (isTelugu) {
       return 'వివరాలకు ధన్యవాదాలు. మీ కాలపరిమితి మరియు బడ్జెట్ మా ప్లాన్లకు అనువుగా ఉన్నాయి. వివరణాత్మక ప్రతిపాదన పంపడానికి మీ కంపెనీ పేరు లేదా ఈమెయిల్ ఐడీ చెప్పగలరా?';
+    }
+    if (isKannada) {
+      return 'ವಿವರಗಳಿಗಾಗಿ ಧನ್ಯವಾದಗಳು. ನಿಮ್ಮ ಸಮಯ ಮತ್ತು ಬಜೆಟ್ ನಮ್ಮ ಯೋಜನೆಗಳಿಗೆ ಸೂಕ್ತವಾಗಿದೆ. ನಿಮ್ಮ ಕಂಪನಿಯ ಹೆಸರು ಅಥವಾ ಇಮೇಲ್ ತಿಳಿಸಬಹುದೇ?';
     }
     return 'Thank you for sharing those details. That timeline and budget fit nicely within our rollout tiers. What is your company name or best email address so we can prepare a tailored proposal?';
   }
@@ -128,6 +167,9 @@ function generateSmartFallbackReply({ history = [], message = '', language = 'en
     if (isTelugu) {
       return 'ధన్యవాదాలు, మీ వివరాలను నమోదు చేసుకున్నాను. మా ఫీచర్లు లేదా సేవల గురించి మీకు ఏవైనా నిర్దిష్ట ప్రశ్నలు ఉన్నాయా?';
     }
+    if (isKannada) {
+      return 'ಧನ್ಯವಾದಗಳು, ನಿಮ್ಮ ವಿವರಗಳನ್ನು ನಾನು ದಾಖಲಿಸಿಕೊಂಡಿದ್ದೇನೆ. ನಮ್ಮ ಸೇವೆಗಳ ಬಗ್ಗೆ ನಿಮಗೆ ಬೇರೆ ಯಾವುದಾದರೂ ಪ್ರಶ್ನೆಗಳಿವೆಯೇ?';
+    }
     return 'Great, I have noted your details down for our team. Is there any specific feature or challenge you would like us to highlight during the walkthrough?';
   }
 
@@ -139,6 +181,9 @@ function generateSmartFallbackReply({ history = [], message = '', language = 'en
     if (isTelugu) {
       return 'అర్థమైంది. మీ వ్యాపారంలో సేల్స్ మరియు లీడ్ కన్వర్షన్ వేగవంతం చేయడానికి మేము సహాయపడతాము. మీ కంపెనీ పేరు మరియు బృందం పరిమాణం తెలియజేస్తారా?';
     }
+    if (isKannada) {
+      return 'ಅರ್ಥವಾಯಿತು. ನಿಮ್ಮ ವ್ಯಾಪಾರದಲ್ಲಿ ಮಾರಾಟ ಮತ್ತು ಲೀಡ್ ನಿರ್ವಹಣೆಯನ್ನು ಸುಲಭಗೊಳಿಸಲು ನಾವು ಸಹಾಯ ಮಾಡುತ್ತೇವೆ. ನಿಮ್ಮ ಕಂಪನಿಯ ಹೆಸರು ಮತ್ತು ತಂಡದ ಗಾತ್ರವನ್ನು ತಿಳಿಸಬಹುದೇ?';
+    }
     return 'Understood. We specialize in automating customer qualification and accelerating sales cycles. Could you tell me a little about your company name and how many team members would use this?';
   }
 
@@ -149,10 +194,14 @@ function generateSmartFallbackReply({ history = [], message = '', language = 'en
   if (isTelugu) {
     return 'చాలా బాగుంది! దీని కోసం మీ వద్ద ఏదైనా నిర్దిష్ట బడ్జెట్ లేదా టైమ్‌లైన్ ఉందా?';
   }
+  if (isKannada) {
+    return 'ತುಂಬಾ ಒಳ್ಳೆಯದು! ಇದಕ್ಕಾಗಿ ನಿಮ್ಮಲ್ಲಿ ಯಾವುದಾದರೂ ಬಜೆಟ್ ಅಥವಾ ಸಮಯದ ಮಿತಿ ಇದೆಯೇ?';
+  }
   return 'That sounds like a solid use case. Do you have an estimated budget or a target launch timeline in mind for this project?';
 }
 
 export async function processMessage({ userId, history = [], message = '', language = 'en-IN' }) {
+  const detectedLanguage = detectLanguage(message, language);
   const knowledge = await retrieveKnowledge(userId, message);
   const context = knowledge.length
     ? knowledge.map(k => `${k.title}: ${k.content}`).join('\n')
@@ -163,19 +212,26 @@ export async function processMessage({ userId, history = [], message = '', langu
   const customerData = extractCustomerData(allText);
   let reply = '';
 
+  const langMap = {
+    'hi-IN': 'Hindi',
+    'te-IN': 'Telugu',
+    'kn-IN': 'Kannada',
+    'en-IN': 'English'
+  };
+  const languageName = langMap[detectedLanguage] || 'English';
+
   if (apiKey) {
     try {
       const genAI = new GoogleGenerativeAI(apiKey);
       const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-      const languageName = language === 'hi-IN' ? 'Hindi' : language === 'te-IN' ? 'Telugu' : 'English';
 
       const prompt = `You are VOXLEAD AI, an autonomous, warm, articulate AI sales representative.
-Your response will be spoken aloud to the customer using browser text-to-speech.
+Your response will be spoken aloud to the customer using text-to-speech.
 
 CRITICAL VOICE & CONVERSATIONAL RULES:
 1. Speak naturally, warmly, and concisely (strictly 1 to 3 conversational sentences max).
 2. NEVER use markdown, bullet points, asterisks (*), hashtags (#), or emojis. Clean, spoken plain text only.
-3. Language: Reply in ${languageName} (language code: ${language}).
+3. Language: ALWAYS reply in ${languageName} (language code: ${detectedLanguage}) using its native script (e.g., Telugu script for Telugu, Kannada script for Kannada, Devanagari for Hindi).
 4. Ask only ONE helpful qualification or follow-up question per turn to keep the dialogue flowing smoothly.
 5. Qualify the prospect organically: discover their business challenge, company name, team size, budget, or timeline.
 6. Ground your answers in the COMPANY KNOWLEDGE below. If knowledge does not contain facts or pricing, state that pricing is tailored and ask for their requirements.
@@ -190,21 +246,22 @@ ${history.slice(-8).map(m => `${m.role === 'user' ? 'Customer' : 'VOXLEAD'}: ${m
 CUSTOMER:
 ${message}
 
-YOUR SPOKEN RESPONSE:`;
+YOUR SPOKEN RESPONSE IN ${languageName}:`;
 
       const result = await model.generateContent(prompt);
       reply = cleanSpokenText(result.response.text());
     } catch (llmErr) {
       console.warn('Gemini LLM call failed, using intelligent conversational engine fallback:', llmErr.message);
-      reply = generateSmartFallbackReply({ history, message, language, knowledge, customerData });
+      reply = generateSmartFallbackReply({ history, message, language: detectedLanguage, knowledge, customerData });
     }
   } else {
-    reply = generateSmartFallbackReply({ history, message, language, knowledge, customerData });
+    reply = generateSmartFallbackReply({ history, message, language: detectedLanguage, knowledge, customerData });
   }
 
   const qualification = scoreLead({ text: allText });
   return {
     reply,
+    detectedLanguage,
     sentiment: sentimentOf(message),
     ...qualification,
     knowledgeUsed: knowledge.map(k => k.title),
@@ -223,4 +280,4 @@ function extractCustomerData(text = '') {
   return { email, budget, company, name };
 }
 
-export { scoreLead, sentimentOf };
+export { scoreLead, sentimentOf, detectLanguage };
