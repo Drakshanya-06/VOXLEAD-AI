@@ -38,9 +38,9 @@ function detectLanguage(message = '', fallbackLanguage = 'en-IN') {
   if (/[\u0900-\u097F]/.test(msg)) return 'hi-IN';
 
   // Romanized Indian language keyword detection (when STT is in English mode)
-  if (/\b(namaskaram|ela unnaru|entha|kavali|cheppandi|meeru|nenu|dhara|telugu|vundha|cheppu|avunu|kadhu|matladu)\b/i.test(msg)) return 'te-IN';
-  if (/\b(namaskara|hegiddira|yeshtu|beku|heli|naanu|neevu|kannada|ideya|illa|howdu|mathadi)\b/i.test(msg)) return 'kn-IN';
-  if (/\b(namaste|kaise ho|kitna|chahiye|kya hai|batao|bataiye|mujhe|aap|hum|hindi|haan|nahi|theek|samjhao)\b/i.test(msg)) return 'hi-IN';
+  if (/\b(namaskaram|namaste|ela|unnaru|bagunnara|entha|kavali|cheppandi|cheppu|meeru|nenu|dhara|telugu|vundha|avunu|kadhu|matladu|enti|miku|naku|naaku|undi|ledu|chala)\b/i.test(msg)) return 'te-IN';
+  if (/\b(namaskara|hegiddira|yeshtu|eshtu|beku|heli|naanu|neevu|kannada|ideya|illa|howdu|mathadi|chennagide|yavaga)\b/i.test(msg)) return 'kn-IN';
+  if (/\b(namaste|kaise|kitna|chahiye|kya|batao|bataiye|mujhe|aap|hum|hindi|haan|nahi|theek|samjhao|paisa|kharch)\b/i.test(msg)) return 'hi-IN';
 
   return fallbackLanguage || 'en-IN';
 }
